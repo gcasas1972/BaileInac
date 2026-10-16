@@ -3,8 +3,16 @@ CREATE TABLE IF NOT EXISTS students (
   name text NOT NULL CHECK (char_length(name) BETWEEN 2 AND 120),
   email text NOT NULL UNIQUE,
   document text NOT NULL UNIQUE,
+  password_hash text,
+  registration_code text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE students ADD COLUMN IF NOT EXISTS password_hash text;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS registration_code text;
+CREATE UNIQUE INDEX IF NOT EXISTS students_registration_code_idx
+  ON students (registration_code)
+  WHERE registration_code IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS classes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

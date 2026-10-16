@@ -1,6 +1,6 @@
 # Baile Inac — registro y asistencia
 
-Aplicación web para registrar alumnos, programar clases con fecha y hora y tomar asistencia por sesión. La interfaz y las rutas están en español; el acceso administrativo se configura mediante variables de entorno.
+Aplicación web para registrar alumnos, programar clases con fecha y hora y tomar asistencia por sesión. Incluye un portal donde los alumnos se registran con su propia contraseña y consultan sus clases y asistencia personal. La interfaz y las rutas están en español; el acceso administrativo se configura mediante variables de entorno.
 
 ## Requisitos
 
@@ -40,7 +40,7 @@ La aplicación estará disponible en `http://localhost:3000`.
 1. Importa este repositorio en Vercel.
 2. En **Storage / Marketplace**, conecta una base de datos Neon Postgres al proyecto. La integración configura `DATABASE_URL`.
 3. En **Settings → Environment Variables**, configura `AUTH_SECRET`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` para los entornos que quieras habilitar.
-4. Con `DATABASE_URL` disponible en el entorno local, ejecuta una vez `npm run db:init` para crear el esquema en Neon.
+4. Con `DATABASE_URL` disponible en el entorno local, ejecuta `npm run db:init` para crear el esquema y aplicar las columnas del portal a las tablas existentes.
 5. Despliega el proyecto. Vercel detecta Next.js automáticamente.
 
 No subas los valores secretos al repositorio. Usa un `AUTH_SECRET` nuevo y una contraseña robusta para producción. La sesión administrativa se firma con JWT, dura ocho horas y se almacena en una cookie `HttpOnly`, `Secure` en producción y `SameSite=Strict`.
@@ -48,7 +48,11 @@ No subas los valores secretos al repositorio. Usa un `AUTH_SECRET` nuevo y una c
 ## Funcionalidad
 
 - Registro de alumnos con nombre, correo y documento únicos.
+- Inscripción pública de alumnos en `/alumnos/registro` y acceso al portal en `/alumnos`.
+- Portal privado del alumno para consultar el calendario y su propia asistencia.
 - Programación de clases para fecha y hora específicas, con notas opcionales.
 - Registro de asistencia por clase: pendiente, presente, ausente o tarde.
 - Resumen de alumnos, clases y próximas sesiones.
 - Acceso privado para un administrador configurado por variables de entorno.
+
+Las contraseñas de los alumnos se almacenan con hash scrypt y salt individual. Los nuevos alumnos pueden crear una cuenta desde el enlace público. Para los alumnos que ya estaban cargados en el sistema, el administrador puede copiar una invitación personal desde el directorio; al registrarse con ese enlace y los mismos correo y documento, se activa su cuenta conservando su historial de asistencia. Las invitaciones son de un solo uso.

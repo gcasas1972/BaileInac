@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type Student = {
@@ -7,6 +8,7 @@ type Student = {
   name: string;
   email: string;
   document: string;
+  registration_code?: string | null;
 };
 
 type ClassSession = {
@@ -148,6 +150,7 @@ function LoginForm({
           {error && <div className="form-error" role="alert">{error}</div>}
           <button className="button button-primary button-wide" type="submit">Iniciar sesión <span aria-hidden="true">→</span></button>
           <span className="login-note">Acceso privado para el equipo administrador.</span>
+          <Link className="student-admin-link" href="/alumnos">¿Eres alumno? Accede a tu portal o regístrate</Link>
         </form>
       </section>
     </main>
@@ -276,6 +279,16 @@ function StudentsPage({ students, onCreated }: { students: Student[]; onCreated:
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  const [copiedStudentId, setCopiedStudentId] = useState("");
+
+  async function copyRegistrationLink(student?: Student) {
+    const inviteCode = student?.registration_code;
+    const registrationUrl = new URL("/alumnos/registro", window.location.origin);
+    if (inviteCode) registrationUrl.hash = new URLSearchParams({ codigo: inviteCode }).toString();
+    await navigator.clipboard.writeText(registrationUrl.toString());
+    setCopiedStudentId(student?.id || "general");
+    window.setTimeout(() => setCopiedStudentId(""), 2500);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -302,6 +315,12 @@ function StudentsPage({ students, onCreated }: { students: Student[]; onCreated:
   return (
     <>
       <PageHeading eyebrow="COMUNIDAD" title="Alumnos" description="Registra y consulta a las personas de tu escuela." />
+      <div className="registration-link-card">
+        <span className="registration-link-icon">↗</span>
+        <div><strong>Comparte el enlace de inscripción</strong><span>Los alumnos podrán crear su cuenta y consultar sus clases y asistencia.</span></div>
+        <Link href="/alumnos/registro" className="registration-link-open">Abrir</Link>
+        <button className="button button-secondary button-compact" onClick={() => void copyRegistrationLink()}>{copiedStudentId === "general" ? "Copiado" : "Copiar enlace"}</button>
+      </div>
       <div className="two-column-layout">
         <section className="panel form-panel"><div className="panel-heading"><div><span className="eyebrow">NUEVO REGISTRO</span><h2>Agregar alumno</h2></div><span className="form-heading-icon">＋</span></div>
           <form className="stack-form" onSubmit={submit}>
@@ -314,7 +333,7 @@ function StudentsPage({ students, onCreated }: { students: Student[]; onCreated:
         </section>
         <section className="panel table-panel"><div className="panel-heading"><div><span className="eyebrow">DIRECTORIO</span><h2>Alumnos registrados <span className="heading-count">{students.length}</span></h2></div></div>
           {students.length === 0 ? <EmptyState title="Todavía no hay alumnos" text="Completa el formulario para crear tu primer registro." /> : (
-            <div className="table-wrap"><table><thead><tr><th>ALUMNO</th><th>DOCUMENTO</th><th>CONTACTO</th></tr></thead><tbody>{students.map((student) => <tr key={student.id}><td><div className="student-cell"><span className="student-avatar">{student.name.trim().charAt(0).toUpperCase()}</span><strong>{student.name}</strong></div></td><td>{student.document}</td><td>{student.email}</td></tr>)}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>ALUMNO</th><th>DOCUMENTO</th><th>CONTACTO</th><th>PORTAL</th></tr></thead><tbody>{students.map((student) => <tr key={student.id}><td><div className="student-cell"><span className="student-avatar">{student.name.trim().charAt(0).toUpperCase()}</span><strong>{student.name}</strong></div></td><td>{student.document}</td><td>{student.email}</td><td>{student.registration_code ? <button className="text-button invite-button" onClick={() => void copyRegistrationLink(student)}>{copiedStudentId === student.id ? "Invitación copiada" : "Copiar invitación"}</button> : <span className="account-active">Cuenta activa</span>}</td></tr>)}</tbody></table></div>
           )}
         </section>
       </div>

@@ -11,11 +11,36 @@ function passwordsMatch(actual: string, expected: string): boolean {
   );
 }
 
-export async function POST(request: NextRequest) {
-  const configuredEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  const configuredPassword = process.env.ADMIN_PASSWORD;
+type AdminCredential = { email: string; password: string };
 
-  if (!configuredEmail || !configuredPassword) {
+function getAdminCredentials(): AdminCredential[] | null {
+  const slots = new Set<number>();
+  for (const key of Object.keys(process.env)) {
+    const match = /^ADMIN_(?:EMAIL|PASSWORD)(?:_(\d+))?$/.exec(key);
+    if (match) slots.add(match[1] ? Number(match[1]) : 1);
+  }
+
+  const sortedSlots = [...slots].sort((a, b) => a - b);
+  if (sortedSlots.some((slot, index) => slot !== index + 1)) return null;
+
+  const credentials: AdminCredential[] = [];
+  for (const slot of sortedSlots) {
+    const suffix = slot === 1 ? "" : `_${slot}`;
+    const email = process.env[`ADMIN_EMAIL${suffix}`]?.trim().toLowerCase();
+    const password = process.env[`ADMIN_PASSWORD${suffix}`];
+    if (!email || !password || credentials.some((admin) => admin.email === email)) {
+      return null;
+    }
+    credentials.push({ email, password });
+  }
+
+  return credentials;
+}
+
+export async function POST(request: NextRequest) {
+  const adminCredentials = getAdminCredentials();
+
+  if (!adminCredentials?.length) {
     return NextResponse.json(
       { error: "El acceso del administrador aún no está configurado." },
       { status: 503 },
@@ -34,17 +59,21 @@ export async function POST(request: NextRequest) {
   }
 
   const { email, password } = body;
-  if (
-    typeof email !== "string" ||
-    typeof password !== "string" ||
-    email.trim().toLowerCase() !== configuredEmail ||
-    !passwordsMatch(password, configuredPassword)
-  ) {
+  if (typeof email !== "string" || typeof password !== "string") {
     return NextResponse.json({ error: "Correo o contraseña incorrectos." }, { status: 401 });
   }
 
-  const token = await createSession(configuredEmail);
-  const response = NextResponse.json({ email: configuredEmail });
+  const normalizedEmail = email.trim().toLowerCase();
+  const admin = adminCredentials.find(
+    (credential) =>
+      credential.email === normalizedEmail && passwordsMatch(password, credential.password),
+  );
+  if (!admin) {
+    return NextResponse.json({ error: "Correo o contraseña incorrectos." }, { status: 401 });
+  }
+
+  const token = await createSession(admin.email);
+  const response = NextResponse.json({ email: admin.email });
   response.cookies.set(sessionCookieName, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

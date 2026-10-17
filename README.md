@@ -19,7 +19,8 @@ Aplicación web para registrar alumnos, programar clases con fecha y hora y toma
 2. Copia `.env.example` a `.env.local` y define:
    - `DATABASE_URL`: cadena de conexión de Neon.
    - `AUTH_SECRET`: valor aleatorio de al menos 32 caracteres.
-   - `ADMIN_EMAIL` y `ADMIN_PASSWORD`: credenciales del administrador.
+   - `ADMIN_EMAIL` y `ADMIN_PASSWORD`: credenciales del primer administrador.
+   - `ADMIN_EMAIL_2` y `ADMIN_PASSWORD_2` (opcionales): credenciales de un segundo administrador. Para añadir más, continúa con `_3`, `_4`, etc.; configura siempre ambos valores para cada número consecutivo.
 
 3. Inicializa las tablas:
 
@@ -39,7 +40,7 @@ La aplicación estará disponible en `http://localhost:3000`.
 
 1. Importa este repositorio en Vercel.
 2. En **Storage / Marketplace**, conecta una base de datos Neon Postgres al proyecto. La integración configura `DATABASE_URL`.
-3. En **Settings → Environment Variables**, configura `AUTH_SECRET`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` para los entornos que quieras habilitar.
+3. En **Settings → Environment Variables**, configura `AUTH_SECRET`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` para el primer administrador. Para añadir más administradores, agrega un par consecutivo como `ADMIN_EMAIL_2` y `ADMIN_PASSWORD_2`; no compartas ni subas las contraseñas al repositorio.
 4. Con `DATABASE_URL` disponible en el entorno local, ejecuta `npm run db:init` para crear el esquema y aplicar las columnas del portal a las tablas existentes.
 5. Despliega el proyecto. Vercel detecta Next.js automáticamente.
 
@@ -53,6 +54,6 @@ No subas los valores secretos al repositorio. Usa un `AUTH_SECRET` nuevo y una c
 - Programación de clases para fecha y hora específicas, con notas opcionales.
 - Registro de asistencia por clase: pendiente, presente, ausente o tarde.
 - Resumen de alumnos, clases y próximas sesiones.
-- Acceso privado para un administrador configurado por variables de entorno.
+- Acceso privado para administradores configurados por variables de entorno.
 
 Las contraseñas de los alumnos se almacenan con hash scrypt y salt individual. Los nuevos alumnos pueden crear una cuenta desde el enlace público. Para los alumnos que ya estaban cargados en el sistema, el administrador puede copiar una invitación personal desde el directorio; al registrarse con ese enlace y los mismos correo y documento, se activa su cuenta conservando su historial de asistencia. Las invitaciones son de un solo uso.

@@ -221,7 +221,7 @@ function AdminDashboard({ adminEmail, onSignOut }: { adminEmail: string; onSignO
               {section === "overview" && <Overview students={students} classes={classes} upcoming={upcomingClasses} onNavigate={setSection} />}
               {section === "students" && <StudentsPage students={students} onCreated={loadData} />}
               {section === "classes" && <ClassesPage classes={classes} onCreated={loadData} onTakeAttendance={(id) => { setSection("attendance"); window.history.replaceState(null, "", `/?clase=${id}`); }} />}
-              {section === "attendance" && <AttendancePage classes={classes} students={students} onSaved={loadData} />}
+              {section === "attendance" && <AttendancePage classes={classes} onSaved={loadData} />}
             </>
           )}
         </div>
@@ -399,7 +399,7 @@ function ClassesPage({ classes, onCreated, onTakeAttendance }: { classes: ClassS
   );
 }
 
-function AttendancePage({ classes, students, onSaved }: { classes: ClassSession[]; students: Student[]; onSaved: () => Promise<void> }) {
+function AttendancePage({ classes, onSaved }: { classes: ClassSession[]; onSaved: () => Promise<void> }) {
   const queryClass = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("clase") : null;
   const [selectedClass, setSelectedClass] = useState(queryClass || "");
   const [roster, setRoster] = useState<AttendanceStudent[]>([]);
@@ -457,7 +457,7 @@ function AttendancePage({ classes, students, onSaved }: { classes: ClassSession[
         <div className="attendance-toolbar"><label className="class-picker">Selecciona una clase<select value={selectedClass} onChange={(event) => { setSelectedClass(event.target.value); setSuccess(""); }}><option value="">Elige una sesión…</option>{classes.map((item) => <option key={item.id} value={item.id}>{item.title} · {formatDate(item.scheduled_at)}</option>)}</select></label>
           {selectedClass && <div className="attendance-totals"><span className="total-present">{totals.present} presentes</span><span>{totals.absent} ausentes</span><span>{totals.late} tarde</span></div>}
         </div>
-        {!selectedClass ? <EmptyState title="Selecciona una clase" text="Elige una sesión programada para abrir la lista de alumnos." /> : loadingRoster ? <div className="content-loading"><span className="spinner" /> Cargando lista…</div> : students.length === 0 ? <EmptyState title="Primero registra a tus alumnos" text="Necesitas alumnos registrados para tomar asistencia." /> : (
+        {!selectedClass ? <EmptyState title="Selecciona una clase" text="Elige una sesión programada para abrir la lista de alumnos." /> : loadingRoster ? <div className="content-loading"><span className="spinner" /> Cargando lista…</div> : roster.length === 0 ? <EmptyState title="No hay alumnos inscritos en esta clase" text="Los alumnos deben inscribirse desde su portal antes de pasar lista." /> : (
           <>
             <div className="attendance-shortcuts"><span>{roster.length} alumnos en la lista</span><button className="text-button" onClick={() => setRoster((previous) => previous.map((item) => ({ ...item, status: "present" })))}>Marcar a todos presentes</button></div>
             <div className="table-wrap"><table><thead><tr><th>ALUMNO</th><th>DOCUMENTO</th><th>ESTADO DE ASISTENCIA</th></tr></thead><tbody>{roster.map((student) => <tr key={student.id}><td><div className="student-cell"><span className="student-avatar">{student.name.trim().charAt(0).toUpperCase()}</span><div className="student-name"><strong>{student.name}</strong><span>{student.email}</span></div></div></td><td>{student.document}</td><td><select aria-label={`Estado de asistencia de ${student.name}`} className={`status-select status-${student.status}`} value={student.status || "pending"} onChange={(event) => updateStatus(student.id, event.target.value as AttendanceStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></td></tr>)}</tbody></table></div>

@@ -31,5 +31,13 @@ CREATE TABLE IF NOT EXISTS attendance (
   UNIQUE (class_id, student_id)
 );
 
+CREATE TABLE IF NOT EXISTS class_enrollments (
+  class_id uuid NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  student_id uuid NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  enrolled_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (class_id, student_id)
+);
+
 CREATE INDEX IF NOT EXISTS classes_scheduled_at_idx ON classes (scheduled_at);
 CREATE INDEX IF NOT EXISTS attendance_class_id_idx ON attendance (class_id);
+CREATE INDEX IF NOT EXISTS class_enrollments_student_id_idx ON class_enrollments (student_id);

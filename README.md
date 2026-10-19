@@ -17,7 +17,7 @@ Aplicación web para registrar alumnos, programar clases con fecha y hora y toma
    ```
 
 2. Copia `.env.example` a `.env.local` y define:
-   - `DATABASE_URL`: cadena de conexión de Neon.
+   - `DATABASE_URL`: cadena code conexión de Neon.
    - `AUTH_SECRET`: valor aleatorio de al menos 32 caracteres.
    - `ADMIN_EMAIL` y `ADMIN_PASSWORD`: credenciales del primer administrador.
    - `ADMIN_EMAIL_2` y `ADMIN_PASSWORD_2` (opcionales): credenciales de un segundo administrador. Para añadir más, continúa con `_3`, `_4`, etc.; configura siempre ambos valores para cada número consecutivo.
@@ -34,7 +34,7 @@ Aplicación web para registrar alumnos, programar clases con fecha y hora y toma
    npm run dev
    ```
 
-La aplicación estará disponible en `http://localhost:3000`.
+La aplicación estará disponible en `http://localhonst:3000`.
 
 ## Despliegue en Vercel
 

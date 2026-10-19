@@ -22,8 +22,15 @@ export async function GET() {
   }
 
   const classes = await sql`
-    SELECT c.id, c.title, c.scheduled_at, a.status AS attendance_status
+    SELECT
+      c.id,
+      c.title,
+      c.scheduled_at,
+      (e.student_id IS NOT NULL OR a.student_id IS NOT NULL) AS is_enrolled,
+      a.status AS attendance_status
     FROM classes c
+    LEFT JOIN class_enrollments e
+      ON e.class_id = c.id AND e.student_id = ${studentId}
     LEFT JOIN attendance a
       ON a.class_id = c.id AND a.student_id = ${studentId}
     ORDER BY

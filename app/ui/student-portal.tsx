@@ -8,6 +8,7 @@ type StudentClass = {
   id: string;
   title: string;
   scheduled_at: string;
+  is_enrolled: boolean;
   attendance_status: "present" | "absent" | "late" | null;
 };
 type PortalMode = "login" | "register";
@@ -136,6 +137,8 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
   const [classes, setClasses] = useState<StudentClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [enrollmentError, setEnrollmentError] = useState("");
+  const [enrollingClassId, setEnrollingClassId] = useState("");
 
   useEffect(() => {
     request<{ classes: StudentClass[] }>("/api/student/portal")
@@ -144,13 +147,37 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
       .finally(() => setLoading(false));
   }, []);
 
-  const attended = useMemo(
-    () => classes.filter((item) => item.attendance_status === "present" || item.attendance_status === "late").length,
+  const enrolledClasses = useMemo(
+    () => classes.filter((item) => item.is_enrolled),
     [classes],
   );
-  const markedClasses = useMemo(
-    () => classes.filter((item) => item.attendance_status !== null).length,
+  const availableClasses = useMemo(
+    () => classes.filter((item) => !item.is_enrolled && new Date(item.scheduled_at).getTime() >= Date.now()),
     [classes],
+  );
+
+  async function enrollInClass(classId: string) {
+    setEnrollmentError("");
+    setEnrollingClassId(classId);
+    try {
+      await request(`/api/student/classes/${classId}/enroll`, { method: "POST" });
+      setClasses((previous) => previous.map((item) =>
+        item.id === classId ? { ...item, is_enrolled: true } : item,
+      ));
+    } catch (cause) {
+      setEnrollmentError(cause instanceof Error ? cause.message : "No se pudo completar la inscripción.");
+    } finally {
+      setEnrollingClassId("");
+    }
+  }
+
+  const attended = useMemo(
+    () => enrolledClasses.filter((item) => item.attendance_status === "present" || item.attendance_status === "late").length,
+    [enrolledClasses],
+  );
+  const markedClasses = useMemo(
+    () => enrolledClasses.filter((item) => item.attendance_status !== null).length,
+    [enrolledClasses],
   );
   const presentRate = markedClasses ? Math.round((attended / markedClasses) * 100) : 0;
 
@@ -163,16 +190,31 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
       <section className="student-home-content">
         <div className="student-welcome"><span className="eyebrow">TU ESPACIO PERSONAL</span><h1>¡Hola, {student.name.split(" ")[0]}!</h1><p>Aquí tienes tus clases y el registro de tu asistencia.</p></div>
         <div className="student-summary">
-          <article className="student-summary-card"><span>Clases en agenda</span><strong>{classes.length.toString().padStart(2, "0")}</strong><small>Sesiones programadas</small></article>
+          <article className="student-summary-card"><span>Clases en agenda</span><strong>{enrolledClasses.length.toString().padStart(2, "0")}</strong><small>Clases en las que estás inscrito</small></article>
           <article className="student-summary-card"><span>Asistencia registrada</span><strong>{presentRate}%</strong><small>{attended} de {markedClasses} clases presente o tarde</small></article>
         </div>
         <section className="student-classes-panel">
-          <div className="student-classes-heading"><div><span className="eyebrow">AGENDA Y REGISTRO</span><h2>Mis clases</h2></div><span className="heading-count">{classes.length}</span></div>
-          {error && <div className="student-portal-error" role="alert">{error}</div>}
-          {loading ? <div className="content-loading"><span className="spinner" /> Cargando tus clases…</div> : classes.length === 0 ? (
-            <div className="empty-state"><span className="empty-icon">✳</span><strong>Aún no hay clases programadas</strong><p>Cuando se agreguen sesiones, aparecerán aquí.</p></div>
+          <div className="student-classes-heading"><div><span className="eyebrow">INSCRIPCIÓN</span><h2>Clases disponibles</h2></div><span className="heading-count">{availableClasses.length}</span></div>
+          {enrollmentError && <div className="student-portal-error" role="alert">{enrollmentError}</div>}
+          {loading ? <div className="content-loading"><span className="spinner" /> Cargando clases…</div> : availableClasses.length === 0 ? (
+            <div className="empty-state"><span className="empty-icon">✳</span><strong>No hay clases disponibles para inscribirte</strong><p>Las próximas clases aparecerán aquí.</p></div>
           ) : (
-            <div className="student-classes-list">{classes.map((item) => {
+            <div className="student-classes-list">{availableClasses.map((item) => (
+              <article className="student-class-item" key={item.id}>
+                <div className="student-class-date"><strong>{new Intl.DateTimeFormat("es", { day: "2-digit" }).format(new Date(item.scheduled_at))}</strong><span>{new Intl.DateTimeFormat("es", { month: "short" }).format(new Date(item.scheduled_at)).replace(".", "")}</span></div>
+                <div className="student-class-info"><strong>{item.title}</strong><span>{classDate(item.scheduled_at)}</span></div>
+                <button className="button button-primary button-compact" disabled={enrollingClassId !== ""} onClick={() => void enrollInClass(item.id)}>{enrollingClassId === item.id ? "Inscribiendo…" : "Inscribirme"}</button>
+              </article>
+            ))}</div>
+          )}
+        </section>
+        <section className="student-classes-panel">
+          <div className="student-classes-heading"><div><span className="eyebrow">AGENDA Y REGISTRO</span><h2>Mis clases</h2></div><span className="heading-count">{enrolledClasses.length}</span></div>
+          {error && <div className="student-portal-error" role="alert">{error}</div>}
+          {loading ? <div className="content-loading"><span className="spinner" /> Cargando tus clases…</div> : enrolledClasses.length === 0 ? (
+            <div className="empty-state"><span className="empty-icon">✳</span><strong>Aún no estás inscrito en ninguna clase</strong><p>Inscríbete en una clase disponible para verla aquí.</p></div>
+          ) : (
+            <div className="student-classes-list">{enrolledClasses.map((item) => {
               const upcoming = new Date(item.scheduled_at).getTime() >= Date.now();
               const status = item.attendance_status ?? (upcoming ? "upcoming" : "pending");
               const label = {

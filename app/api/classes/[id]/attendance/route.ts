@@ -29,6 +29,11 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     SELECT s.id, s.name, s.email, s.document, a.status
     FROM students s
     LEFT JOIN attendance a ON a.student_id = s.id AND a.class_id = ${id}
+    WHERE EXISTS (
+      SELECT 1
+      FROM class_enrollments e
+      WHERE e.class_id = ${id} AND e.student_id = s.id
+    ) OR a.id IS NOT NULL
     ORDER BY s.name ASC
   `;
   return NextResponse.json({ class: classInfo, students });

@@ -181,6 +181,17 @@ td:first-child, th:first-child { padding-left: 19px; }
 .empty-state strong { font-size: 12px; }
 .empty-state p { max-width: 300px; margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .empty-state .text-button { margin-top: 12px; }
+.link-feedback { margin-bottom: 18px; }
+.shared-links-list, .student-links-list { padding: 0 19px; }
+.shared-link-row, .student-link-card { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-top: 1px solid #f2f1f5; }
+.shared-link-copy, .student-link-card > div { min-width: 0; flex: 1; }
+.shared-link-copy strong, .shared-link-copy p, .shared-link-copy a, .student-link-card strong, .student-link-card p { display: block; }
+.shared-link-copy strong, .student-link-card strong { color: #4b4956; font-size: 11px; }
+.shared-link-copy p, .student-link-card p { margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.shared-link-copy a { overflow: hidden; margin-top: 6px; color: var(--purple); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.student-links-list { padding-top: 2px; padding-bottom: 2px; }
+.student-link-card { padding: 17px 0; }
+.student-links-empty { padding: 22px; color: var(--muted); font-size: 11px; text-align: center; }
 .class-list { padding: 0 19px; }
 .class-row { display: flex; align-items: center; gap: 13px; padding: 13px 0; border-top: 1px solid #f2f1f5; }
 .class-row-copy { min-width: 0; flex: 1; }

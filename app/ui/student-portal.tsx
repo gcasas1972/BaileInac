@@ -11,6 +11,7 @@ type StudentClass = {
   is_enrolled: boolean;
   attendance_status: "present" | "absent" | "late" | null;
 };
+type StudentLink = { id: string; title: string; url: string; description: string };
 type PortalMode = "login" | "register";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -135,6 +136,7 @@ export default function StudentPortal({ mode }: { mode: PortalMode }) {
 
 function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () => Promise<void> }) {
   const [classes, setClasses] = useState<StudentClass[]>([]);
+  const [links, setLinks] = useState<StudentLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [enrollmentError, setEnrollmentError] = useState("");
@@ -142,8 +144,11 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
   const [cancellingClassId, setCancellingClassId] = useState("");
 
   useEffect(() => {
-    request<{ classes: StudentClass[] }>("/api/student/portal")
-      .then((result) => setClasses(result.classes))
+    request<{ classes: StudentClass[]; links: StudentLink[] }>("/api/student/portal")
+      .then((result) => {
+        setClasses(result.classes);
+        setLinks(result.links);
+      })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "No se pudieron cargar tus clases."))
       .finally(() => setLoading(false));
   }, []);
@@ -211,6 +216,19 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
           <article className="student-summary-card"><span>Clases en agenda</span><strong>{enrolledClasses.length.toString().padStart(2, "0")}</strong><small>Clases en las que estás inscrito</small></article>
           <article className="student-summary-card"><span>Asistencia registrada</span><strong>{presentRate}%</strong><small>{attended} de {markedClasses} clases presente o tarde</small></article>
         </div>
+        <section className="student-classes-panel">
+          <div className="student-classes-heading"><div><span className="eyebrow">RECURSOS</span><h2>Enlaces útiles</h2></div><span className="heading-count">{links.length}</span></div>
+          {loading ? <div className="content-loading"><span className="spinner" /> Cargando enlaces…</div> : links.length === 0 ? (
+            <div className="student-links-empty">Pronto encontrarás aquí recursos y enlaces compartidos por la escuela.</div>
+          ) : (
+            <div className="student-links-list">{links.map((link) => (
+              <article className="student-link-card" key={link.id}>
+                <div><strong>{link.title}</strong>{link.description && <p>{link.description}</p>}</div>
+                <a className="button button-secondary button-compact" href={link.url} target="_blank" rel="noopener noreferrer">Abrir enlace <span aria-hidden="true">↗</span></a>
+              </article>
+            ))}</div>
+          )}
+        </section>
         <section className="student-classes-panel">
           <div className="student-classes-heading"><div><span className="eyebrow">INSCRIPCIÓN</span><h2>Clases disponibles</h2></div><span className="heading-count">{availableClasses.length}</span></div>
           {enrollmentError && <div className="student-portal-error" role="alert">{enrollmentError}</div>}

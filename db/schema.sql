@@ -38,6 +38,15 @@ CREATE TABLE IF NOT EXISTS class_enrollments (
   PRIMARY KEY (class_id, student_id)
 );
 
+CREATE TABLE IF NOT EXISTS student_links (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL CHECK (char_length(title) BETWEEN 2 AND 120),
+  url text NOT NULL CHECK (char_length(url) BETWEEN 1 AND 2048),
+  description text NOT NULL DEFAULT '' CHECK (char_length(description) <= 500),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS classes_scheduled_at_idx ON classes (scheduled_at);
 CREATE INDEX IF NOT EXISTS attendance_class_id_idx ON attendance (class_id);
 CREATE INDEX IF NOT EXISTS class_enrollments_student_id_idx ON class_enrollments (student_id);
+CREATE INDEX IF NOT EXISTS student_links_created_at_idx ON student_links (created_at DESC);

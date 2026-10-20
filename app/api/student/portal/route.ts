@@ -38,5 +38,10 @@ export async function GET() {
       CASE WHEN c.scheduled_at >= now() THEN c.scheduled_at END ASC,
       CASE WHEN c.scheduled_at < now() THEN c.scheduled_at END DESC
   `;
-  return NextResponse.json({ student, classes });
+  const links = await sql`
+    SELECT id, title, url, description, created_at
+    FROM student_links
+    ORDER BY created_at DESC
+  `;
+  return NextResponse.json({ student, classes, links });
 }

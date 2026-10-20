@@ -22,7 +22,8 @@ type ClassSession = {
 
 type AttendanceStudent = Student & { status: AttendanceStatus | null };
 type AttendanceStatus = "pending" | "present" | "absent" | "late";
-type Section = "overview" | "students" | "classes" | "attendance";
+type StudentLink = { id: string; title: string; url: string; description: string };
+type Section = "overview" | "students" | "classes" | "attendance" | "links";
 
 async function fetchAttendanceRoster(classId: string) {
   return apiRequest<{ students: AttendanceStudent[]; availableStudents: Student[] }>(
@@ -204,6 +205,7 @@ function AdminDashboard({ adminEmail, onSignOut }: { adminEmail: string; onSignO
           <NavButton active={section === "students"} icon="◎" onClick={() => setSection("students")}>Alumnos <span className="nav-count">{students.length}</span></NavButton>
           <NavButton active={section === "classes"} icon="▦" onClick={() => setSection("classes")}>Clases</NavButton>
           <NavButton active={section === "attendance"} icon="✓" onClick={() => setSection("attendance")}>Asistencia</NavButton>
+          <NavButton active={section === "links"} icon="↗" onClick={() => setSection("links")}>Enlaces</NavButton>
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-help"><span className="help-icon">?</span><div><strong>¿Todo listo?</strong><span>Tu gestión, más fácil.</span></div></div>
@@ -228,6 +230,7 @@ function AdminDashboard({ adminEmail, onSignOut }: { adminEmail: string; onSignO
               {section === "students" && <StudentsPage students={students} onCreated={loadData} />}
               {section === "classes" && <ClassesPage classes={classes} onCreated={loadData} onTakeAttendance={(id) => { setSection("attendance"); window.history.replaceState(null, "", `/?clase=${id}`); }} />}
               {section === "attendance" && <AttendancePage classes={classes} onSaved={loadData} />}
+              {section === "links" && <LinksPage />}
             </>
           )}
         </div>
@@ -241,7 +244,104 @@ function NavButton({ active, icon, children, onClick }: { active: boolean; icon:
 }
 
 function sectionLabel(section: Section) {
-  return { overview: "Resumen", students: "Alumnos", classes: "Clases", attendance: "Asistencia" }[section];
+  return { overview: "Resumen", students: "Alumnos", classes: "Clases", attendance: "Asistencia", links: "Enlaces para alumnos" }[section];
+}
+
+function LinksPage() {
+  const [links, setLinks] = useState<StudentLink[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [removingId, setRemovingId] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const loadLinks = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await apiRequest<{ links: StudentLink[] }>("/api/student-links");
+      setLinks(result.links);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudieron cargar los enlaces.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadLinks(); }, [loadLinks]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+    setSaving(true);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    try {
+      const result = await apiRequest<{ link: StudentLink }>("/api/student-links", {
+        method: "POST",
+        body: JSON.stringify({
+          title: form.get("title"),
+          url: form.get("url"),
+          description: form.get("description"),
+        }),
+      });
+      setLinks((previous) => [result.link, ...previous]);
+      formElement.reset();
+      setSuccess("Enlace agregado. Ya está disponible para los alumnos.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo agregar el enlace.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeLink(id: string) {
+    setError("");
+    setSuccess("");
+    setRemovingId(id);
+    try {
+      await apiRequest(`/api/student-links/${id}`, { method: "DELETE" });
+      setLinks((previous) => previous.filter((link) => link.id !== id));
+      setSuccess("Enlace quitado del portal de alumnos.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo quitar el enlace.");
+    } finally {
+      setRemovingId("");
+    }
+  }
+
+  return (
+    <>
+      <PageHeading eyebrow="RECURSOS COMPARTIDOS" title="Enlaces para alumnos" description="Agrega recursos y enlaces que aparecerán en el portal de todos los alumnos." />
+      {error && <div className="alert-error" role="alert">{error}</div>}
+      {success && <div className="form-success link-feedback" role="status">{success}</div>}
+      <div className="two-column-layout">
+        <section className="panel form-panel">
+          <div className="panel-heading"><div><span className="eyebrow">NUEVO RECURSO</span><h2>Agregar enlace</h2></div><span className="form-heading-icon">↗</span></div>
+          <form className="stack-form" onSubmit={submit}>
+            <label>Descripción corta<input name="title" placeholder="Ej. Video de práctica" minLength={2} maxLength={120} required /></label>
+            <label>URL<input name="url" type="url" placeholder="https://…" maxLength={2048} required /></label>
+            <label>Descripción<textarea name="description" placeholder="¿Qué encontrarán los alumnos en este enlace?" maxLength={500} rows={3} /></label>
+            <button className="button button-primary button-wide" disabled={saving}>{saving ? "Guardando…" : "Agregar enlace"} <span aria-hidden="true">→</span></button>
+          </form>
+        </section>
+        <section className="panel table-panel">
+          <div className="panel-heading"><div><span className="eyebrow">VISIBLE EN EL PORTAL</span><h2>Enlaces publicados <span className="heading-count">{links.length}</span></h2></div></div>
+          {loading ? <div className="content-loading"><span className="spinner" /> Cargando enlaces…</div> : links.length === 0 ? (
+            <EmptyState title="Todavía no hay enlaces" text="Agrega un recurso para que los alumnos puedan consultarlo desde su portal." />
+          ) : (
+            <div className="shared-links-list">{links.map((link) => (
+              <article className="shared-link-row" key={link.id}>
+                <div className="shared-link-copy"><strong>{link.title}</strong><p>{link.description || "Sin descripción"}</p><a href={link.url} target="_blank" rel="noopener noreferrer">{link.url}</a></div>
+                <button className="button button-secondary button-compact" disabled={removingId !== ""} onClick={() => void removeLink(link.id)}>{removingId === link.id ? "Quitando…" : "Quitar"}</button>
+              </article>
+            ))}</div>
+          )}
+        </section>
+      </div>
+    </>
+  );
 }
 
 function Overview({

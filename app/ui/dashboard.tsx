@@ -24,6 +24,12 @@ type AttendanceStudent = Student & { status: AttendanceStatus | null };
 type AttendanceStatus = "pending" | "present" | "absent" | "late";
 type Section = "overview" | "students" | "classes" | "attendance";
 
+async function fetchAttendanceRoster(classId: string) {
+  return apiRequest<{ students: AttendanceStudent[]; availableStudents: Student[] }>(
+    `/api/classes/${classId}/attendance`,
+  );
+}
+
 const statusLabels: Record<AttendanceStatus, string> = {
   pending: "Pendiente",
   present: "Presente",
@@ -403,21 +409,30 @@ function AttendancePage({ classes, onSaved }: { classes: ClassSession[]; onSaved
   const queryClass = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("clase") : null;
   const [selectedClass, setSelectedClass] = useState(queryClass || "");
   const [roster, setRoster] = useState<AttendanceStudent[]>([]);
+  const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
+  const [studentToAdd, setStudentToAdd] = useState("");
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  const [updatingRoster, setUpdatingRoster] = useState(false);
 
   useEffect(() => {
     if (!selectedClass) {
       setRoster([]);
+      setAvailableStudents([]);
       return;
     }
     let cancelled = false;
     setLoadingRoster(true);
     setError("");
-    apiRequest<{ students: AttendanceStudent[] }>(`/api/classes/${selectedClass}/attendance`)
-      .then((result) => { if (!cancelled) setRoster(result.students.map((student) => ({ ...student, status: student.status || "pending" }))); })
+    fetchAttendanceRoster(selectedClass)
+      .then((result) => {
+        if (!cancelled) {
+          setRoster(result.students.map((student) => ({ ...student, status: student.status || "pending" })));
+          setAvailableStudents(result.availableStudents);
+        }
+      })
       .catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "No se pudo cargar la lista."); })
       .finally(() => { if (!cancelled) setLoadingRoster(false); });
     return () => { cancelled = true; };
@@ -430,6 +445,38 @@ function AttendancePage({ classes, onSaved }: { classes: ClassSession[]; onSaved
 
   function updateStatus(studentId: string, status: AttendanceStatus) {
     setRoster((previous) => previous.map((student) => student.id === studentId ? { ...student, status } : student));
+  }
+
+  async function refreshRoster(classId: string) {
+    const result = await fetchAttendanceRoster(classId);
+    setRoster(result.students.map((student) => ({ ...student, status: student.status || "pending" })));
+    setAvailableStudents(result.availableStudents);
+  }
+
+  async function updateEnrollment(studentId: string, action: "add" | "remove") {
+    setError("");
+    setSuccess("");
+    setUpdatingRoster(true);
+    try {
+      await apiRequest(`/api/classes/${selectedClass}/attendance`, {
+        method: "PUT",
+        body: JSON.stringify({ studentId, action }),
+      });
+      await refreshRoster(selectedClass);
+      setStudentToAdd("");
+      setSuccess(action === "add" ? "El alumno se agregó a la clase." : "El alumno se quitó de la clase.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo actualizar la lista de alumnos.");
+    } finally {
+      setUpdatingRoster(false);
+    }
+  }
+
+  function removeStudent(student: AttendanceStudent) {
+    const confirmed = window.confirm(
+      `¿Quitar a ${student.name} de esta clase? También se eliminará su marca de asistencia de esta sesión.`,
+    );
+    if (confirmed) void updateEnrollment(student.id, "remove");
   }
 
   async function saveAttendance() {
@@ -454,14 +501,33 @@ function AttendancePage({ classes, onSaved }: { classes: ClassSession[]; onSaved
     <>
       <PageHeading eyebrow="CONTROL DE CLASES" title="Asistencia" description="Marca presentes, ausentes y llegadas tarde por sesión." />
       <section className="panel attendance-panel">
-        <div className="attendance-toolbar"><label className="class-picker">Selecciona una clase<select value={selectedClass} onChange={(event) => { setSelectedClass(event.target.value); setSuccess(""); }}><option value="">Elige una sesión…</option>{classes.map((item) => <option key={item.id} value={item.id}>{item.title} · {formatDate(item.scheduled_at)}</option>)}</select></label>
+        <div className="attendance-toolbar"><label className="class-picker">Selecciona una clase<select value={selectedClass} disabled={saving || updatingRoster} onChange={(event) => { setSelectedClass(event.target.value); setStudentToAdd(""); setError(""); setSuccess(""); }}><option value="">Elige una sesión…</option>{classes.map((item) => <option key={item.id} value={item.id}>{item.title} · {formatDate(item.scheduled_at)}</option>)}</select></label>
           {selectedClass && <div className="attendance-totals"><span className="total-present">{totals.present} presentes</span><span>{totals.absent} ausentes</span><span>{totals.late} tarde</span></div>}
         </div>
-        {!selectedClass ? <EmptyState title="Selecciona una clase" text="Elige una sesión programada para abrir la lista de alumnos." /> : loadingRoster ? <div className="content-loading"><span className="spinner" /> Cargando lista…</div> : roster.length === 0 ? <EmptyState title="No hay alumnos inscritos en esta clase" text="Los alumnos deben inscribirse desde su portal antes de pasar lista." /> : (
+        {selectedClass && !loadingRoster && (
+          <div className="attendance-manage">
+            <label className="class-picker">Agregar alumno
+              <select value={studentToAdd} onChange={(event) => setStudentToAdd(event.target.value)}>
+                <option value="">{availableStudents.length ? "Selecciona un alumno…" : "No hay otros alumnos disponibles"}</option>
+                {availableStudents.map((student) => <option key={student.id} value={student.id}>{student.name} · {student.document}</option>)}
+              </select>
+            </label>
+            <button className="button button-secondary" disabled={saving || updatingRoster || !studentToAdd} onClick={() => void updateEnrollment(studentToAdd, "add")}>
+              {updatingRoster ? "Actualizando…" : "Agregar a la clase"}
+            </button>
+          </div>
+        )}
+        {(error || success) && (
+          <div className="attendance-feedback">
+            {error && <div className="form-error" role="alert">{error}</div>}
+            {success && <div className="form-success" role="status">{success}</div>}
+          </div>
+        )}
+        {!selectedClass ? <EmptyState title="Selecciona una clase" text="Elige una sesión programada para abrir la lista de alumnos." /> : loadingRoster ? <div className="content-loading"><span className="spinner" /> Cargando lista…</div> : roster.length === 0 ? <EmptyState title="No hay alumnos inscritos en esta clase" text="Agrega alumnos con el selector para incluirlos en esta sesión." /> : (
           <>
-            <div className="attendance-shortcuts"><span>{roster.length} alumnos en la lista</span><button className="text-button" onClick={() => setRoster((previous) => previous.map((item) => ({ ...item, status: "present" })))}>Marcar a todos presentes</button></div>
-            <div className="table-wrap"><table><thead><tr><th>ALUMNO</th><th>DOCUMENTO</th><th>ESTADO DE ASISTENCIA</th></tr></thead><tbody>{roster.map((student) => <tr key={student.id}><td><div className="student-cell"><span className="student-avatar">{student.name.trim().charAt(0).toUpperCase()}</span><div className="student-name"><strong>{student.name}</strong><span>{student.email}</span></div></div></td><td>{student.document}</td><td><select aria-label={`Estado de asistencia de ${student.name}`} className={`status-select status-${student.status}`} value={student.status || "pending"} onChange={(event) => updateStatus(student.id, event.target.value as AttendanceStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></td></tr>)}</tbody></table></div>
-            <div className="attendance-footer">{error && <div className="form-error" role="alert">{error}</div>}{success && <div className="form-success" role="status">{success}</div>}<button className="button button-primary" disabled={saving || roster.length === 0} onClick={() => void saveAttendance()}>{saving ? "Guardando…" : "Guardar asistencia"} <span aria-hidden="true">→</span></button></div>
+            <div className="attendance-shortcuts"><span>{roster.length} alumnos en la lista</span><button className="text-button" disabled={updatingRoster} onClick={() => setRoster((previous) => previous.map((item) => ({ ...item, status: "present" })))}>Marcar a todos presentes</button></div>
+            <div className="table-wrap"><table><thead><tr><th>ALUMNO</th><th>DOCUMENTO</th><th>ESTADO DE ASISTENCIA</th><th>ACCIONES</th></tr></thead><tbody>{roster.map((student) => <tr key={student.id}><td><div className="student-cell"><span className="student-avatar">{student.name.trim().charAt(0).toUpperCase()}</span><div className="student-name"><strong>{student.name}</strong><span>{student.email}</span></div></div></td><td>{student.document}</td><td><select aria-label={`Estado de asistencia de ${student.name}`} className={`status-select status-${student.status}`} value={student.status || "pending"} disabled={updatingRoster} onChange={(event) => updateStatus(student.id, event.target.value as AttendanceStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></td><td><button className="text-button attendance-remove" disabled={saving || updatingRoster} onClick={() => removeStudent(student)}>Quitar</button></td></tr>)}</tbody></table></div>
+            <div className="attendance-footer"><button className="button button-primary" disabled={saving || updatingRoster || roster.length === 0} onClick={() => void saveAttendance()}>{saving ? "Guardando…" : "Guardar asistencia"} <span aria-hidden="true">→</span></button></div>
           </>
         )}
       </section>

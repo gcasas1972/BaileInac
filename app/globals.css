@@ -196,6 +196,9 @@ td:first-child, th:first-child { padding-left: 19px; }
 .class-picker select { height: 42px; }
 .attendance-totals { display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 11px; color: #9997a3; font-size: 9px; }
 .total-present { color: var(--green); }
+.attendance-manage { display: flex; align-items: flex-end; gap: 12px; padding: 16px 21px; border-bottom: 1px solid var(--line); }
+.attendance-manage .class-picker { flex: 1; }
+.attendance-feedback { display: grid; gap: 8px; padding: 14px 20px 0; }
 .attendance-shortcuts { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; color: #898794; font-size: 10px; }
 .student-name span { display: block; margin-top: 3px; color: #a09eaa; font-size: 9px; }
 .status-select { min-width: 124px; padding: 7px 9px; border: 1px solid #e9e7ed; border-radius: 7px; outline: 0; font-size: 10px; }
@@ -203,6 +206,7 @@ td:first-child, th:first-child { padding-left: 19px; }
 .status-present { border-color: #d8eddf; background: var(--green-soft); color: var(--green); }
 .status-absent { border-color: #f5d9d6; background: #fff0ef; color: #b4544d; }
 .status-late { border-color: #f4e2d1; background: #fff6e9; color: #b87b39; }
+.attendance-remove { color: #b4544d; }
 .attendance-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--line); }
 .attendance-footer .button { margin-left: auto; }
 .alert-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; padding: 12px 15px; border: 1px solid #f5d9d6; border-radius: 8px; background: #fff0ef; color: #a94039; font-size: 11px; }
@@ -332,8 +336,9 @@ td:first-child, th:first-child { padding-left: 19px; }
   .heading-row { align-items: flex-start; }
   .heading-row .button { gap: 6px; padding: 0 10px; font-size: 10px; white-space: nowrap; }
   .attendance-toolbar { align-items: stretch; flex-direction: column; }
+  .attendance-manage { align-items: stretch; flex-direction: column; }
+  .attendance-manage .button { align-self: flex-start; }
   .attendance-totals { padding-bottom: 0; }
-  .attendance-footer .form-error, .attendance-footer .form-success { width: 100%; }
 }
 
 @media (max-width: 470px) {
@@ -356,4 +361,5 @@ td:first-child, th:first-child { padding-left: 19px; }
   .stack-form { padding: 0 15px; }
   .attendance-shortcuts { padding-right: 13px; padding-left: 13px; }
   .attendance-shortcuts .text-button { font-size: 9px; }
+  .attendance-feedback { padding-right: 13px; padding-left: 13px; }
 }

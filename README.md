@@ -52,7 +52,7 @@ No subas los valores secretos al repositorio. Usa un `AUTH_SECRET` nuevo y una c
 - Inscripción pública de alumnos en `/alumnos/registro` y acceso al portal en `/alumnos`.
 - Portal privado del alumno para consultar el calendario y su propia asistencia.
 - Programación de clases para fecha y hora específicas, con notas opcionales.
-- Registro de asistencia por clase: pendiente, presente, ausente o tarde.
+- Registro de asistencia por clase: pendiente, presente, ausente o tarde; los administradores pueden agregar alumnos a una sesión y quitarlos junto con su marca de esa sesión.
 - Resumen de alumnos, clases y próximas sesiones.
 - Acceso privado para administradores configurados por variables de entorno.
 

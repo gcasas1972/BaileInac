@@ -36,7 +36,79 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     ) OR a.id IS NOT NULL
     ORDER BY s.name ASC
   `;
-  return NextResponse.json({ class: classInfo, students });
+  const availableStudents = await sql`
+    SELECT s.id, s.name, s.email, s.document
+    FROM students s
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM class_enrollments e
+      WHERE e.class_id = ${id} AND e.student_id = s.id
+    ) AND NOT EXISTS (
+      SELECT 1
+      FROM attendance a
+      WHERE a.class_id = ${id} AND a.student_id = s.id
+    )
+    ORDER BY s.name ASC
+  `;
+  return NextResponse.json({ class: classInfo, students, availableStudents });
+}
+
+export async function PUT(request: NextRequest, { params }: RouteContext) {
+  const unauthorized = await requireAdmin();
+  if (unauthorized) return unauthorized;
+
+  const { id } = await params;
+  if (!uuidPattern.test(id)) {
+    return NextResponse.json({ error: "El identificador de clase no es válido." }, { status: 400 });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "La solicitud no contiene JSON válido." }, { status: 400 });
+  }
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("studentId" in body) ||
+    typeof body.studentId !== "string" ||
+    !uuidPattern.test(body.studentId) ||
+    !("action" in body) ||
+    (body.action !== "add" && body.action !== "remove")
+  ) {
+    return NextResponse.json({ error: "La operación de inscripción no es válida." }, { status: 400 });
+  }
+
+  const sql = getSql();
+  const [classInfo] = await sql`SELECT id FROM classes WHERE id = ${id}`;
+  if (!classInfo) {
+    return NextResponse.json({ error: "No se encontró la clase." }, { status: 404 });
+  }
+  const [student] = await sql`SELECT id FROM students WHERE id = ${body.studentId}`;
+  if (!student) {
+    return NextResponse.json({ error: "No se encontró el alumno." }, { status: 404 });
+  }
+
+  if (body.action === "add") {
+    await sql`
+      INSERT INTO class_enrollments (class_id, student_id)
+      VALUES (${id}, ${body.studentId})
+      ON CONFLICT (class_id, student_id) DO NOTHING
+    `;
+    return NextResponse.json({ ok: true, enrolled: true });
+  }
+
+  await sql`
+    WITH removed_attendance AS (
+      DELETE FROM attendance
+      WHERE class_id = ${id} AND student_id = ${body.studentId}
+      RETURNING student_id
+    )
+    DELETE FROM class_enrollments
+    WHERE class_id = ${id} AND student_id = ${body.studentId}
+  `;
+  return NextResponse.json({ ok: true, enrolled: false });
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {

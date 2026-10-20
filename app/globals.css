@@ -275,6 +275,7 @@ td:first-child, th:first-child { padding-left: 19px; }
 .student-class-info strong { overflow: hidden; color: #4b4956; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .student-class-info span { margin-top: 5px; color: var(--muted); font-size: 9px; text-transform: capitalize; }
 .student-attendance-badge { flex: 0 0 auto; padding: 6px 9px; border-radius: 6px; background: #f6f5f8; color: #777583; font-size: 9px; }
+.student-cancellation-note { max-width: 94px; flex: 0 0 auto; color: var(--muted); font-size: 8px; text-align: right; }
 .attendance-present { background: var(--green-soft); color: var(--green); }
 .attendance-absent { background: #fff0ef; color: #b4544d; }
 .attendance-late { background: #fff6e9; color: #b87b39; }

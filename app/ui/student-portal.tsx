@@ -139,6 +139,7 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
   const [error, setError] = useState("");
   const [enrollmentError, setEnrollmentError] = useState("");
   const [enrollingClassId, setEnrollingClassId] = useState("");
+  const [cancellingClassId, setCancellingClassId] = useState("");
 
   useEffect(() => {
     request<{ classes: StudentClass[] }>("/api/student/portal")
@@ -168,6 +169,23 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
       setEnrollmentError(cause instanceof Error ? cause.message : "No se pudo completar la inscripción.");
     } finally {
       setEnrollingClassId("");
+    }
+  }
+
+  async function cancelEnrollment(classId: string) {
+    setEnrollmentError("");
+    setCancellingClassId(classId);
+    try {
+      await request(`/api/student/classes/${classId}/enroll`, { method: "DELETE" });
+      setClasses((previous) => previous.map((item) =>
+        item.id === classId
+          ? { ...item, is_enrolled: false, attendance_status: null }
+          : item,
+      ));
+    } catch (cause) {
+      setEnrollmentError(cause instanceof Error ? cause.message : "No se pudo cancelar la inscripción.");
+    } finally {
+      setCancellingClassId("");
     }
   }
 
@@ -216,6 +234,7 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
           ) : (
             <div className="student-classes-list">{enrolledClasses.map((item) => {
               const upcoming = new Date(item.scheduled_at).getTime() >= Date.now();
+              const canCancel = new Date(item.scheduled_at).getTime() - Date.now() > 60 * 60 * 1000;
               const status = item.attendance_status ?? (upcoming ? "upcoming" : "pending");
               const label = {
                 present: "Presente",
@@ -228,6 +247,17 @@ function StudentHome({ student, onSignOut }: { student: Student; onSignOut: () =
                 <div className="student-class-date"><strong>{new Intl.DateTimeFormat("es", { day: "2-digit" }).format(new Date(item.scheduled_at))}</strong><span>{new Intl.DateTimeFormat("es", { month: "short" }).format(new Date(item.scheduled_at)).replace(".", "")}</span></div>
                 <div className="student-class-info"><strong>{item.title}</strong><span>{classDate(item.scheduled_at)}</span></div>
                 <span className={`student-attendance-badge attendance-${status}`}>{label}</span>
+                {canCancel ? (
+                  <button
+                    className="button button-compact"
+                    disabled={cancellingClassId !== "" || enrollingClassId !== ""}
+                    onClick={() => void cancelEnrollment(item.id)}
+                  >
+                    {cancellingClassId === item.id ? "Cancelando…" : "Cancelar"}
+                  </button>
+                ) : upcoming && (
+                  <span className="student-cancellation-note">No cancelable dentro de la última hora</span>
+                )}
               </article>;
             })}</div>
           )}

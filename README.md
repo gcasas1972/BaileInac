@@ -51,6 +51,7 @@ No subas los valores secretos al repositorio. Usa un `AUTH_SECRET` nuevo y una c
 - Registro de alumnos con nombre, correo y documento únicos.
 - Inscripción pública de alumnos en `/alumnos/registro` y acceso al portal en `/alumnos`.
 - Portal privado del alumno para consultar el calendario y su propia asistencia.
+- Los alumnos pueden cancelar su inscripción hasta una hora antes del inicio de la clase.
 - Programación de clases para fecha y hora específicas, con notas opcionales.
 - Registro de asistencia por clase: pendiente, presente, ausente o tarde; los administradores pueden agregar alumnos a una sesión y quitarlos junto con su marca de esa sesión.
 - Resumen de alumnos, clases y próximas sesiones.

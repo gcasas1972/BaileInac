@@ -201,6 +201,10 @@ td:first-child, th:first-child { padding-left: 19px; }
 .class-row-copy small { overflow: hidden; margin-top: 4px; color: #aaa8b3; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .class-row-copy .class-state { color: var(--green); }
 .class-row-copy .state-past { color: #a09eaa; }
+.class-row-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.button-danger { border: 1px solid #f1d9d7; background: #fff; color: #b4544d; }
+.button-danger:hover:not(:disabled) { background: #fff0ef; }
+.class-feedback { margin-bottom: 18px; }
 .attendance-panel { padding-bottom: 0; }
 .attendance-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 15px; padding: 19px 21px; border-bottom: 1px solid var(--line); }
 .class-picker { width: min(100%, 440px); color: #5d5b68; font-size: 10px; font-weight: 700; }
@@ -365,6 +369,8 @@ td:first-child, th:first-child { padding-left: 19px; }
   .student-summary { gap: 9px; }
   .student-summary-card { min-height: 105px; padding: 13px; }
   .student-summary-card strong { top: 13px; right: 13px; font-size: 20px; }
+  .class-row { align-items: flex-start; flex-wrap: wrap; }
+  .class-row-actions { width: 100%; justify-content: flex-end; padding-left: 51px; }
   .registration-link-card .registration-link-open { display: none; }
   .content { padding-right: 4%; padding-left: 4%; }
   .upcoming-item { gap: 9px; }

@@ -451,6 +451,8 @@ function ClassesPage({ classes, onCreated, onTakeAttendance }: { classes: ClassS
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  const [removingClassId, setRemovingClassId] = useState("");
+  const [editingClass, setEditingClass] = useState<ClassSession | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -461,42 +463,66 @@ function ClassesPage({ classes, onCreated, onTakeAttendance }: { classes: ClassS
     const form = new FormData(formElement);
     const localDate = form.get("scheduledAt");
     try {
-      await apiRequest("/api/classes", {
-        method: "POST",
+      await apiRequest(editingClass ? `/api/classes/${editingClass.id}` : "/api/classes", {
+        method: editingClass ? "PUT" : "POST",
         body: JSON.stringify({
           title: form.get("title"),
           scheduledAt: typeof localDate === "string" ? new Date(localDate).toISOString() : "",
-          notes: form.get("notes"),
+          notes: form.get("notes") || "",
         }),
       });
       formElement.reset();
-      setSuccess("Clase programada correctamente.");
+      setSuccess(editingClass ? "Clase actualizada correctamente." : "Clase programada correctamente.");
+      setEditingClass(null);
       await onCreated();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo programar la clase.");
+      setError(cause instanceof Error ? cause.message : "No se pudo guardar la clase.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removeClass(item: ClassSession) {
+    const confirmed = window.confirm(
+      `¿Quitar la clase "${item.title}"? También se eliminarán las inscripciones y la asistencia asociadas. Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+
+    setError("");
+    setSuccess("");
+    setRemovingClassId(item.id);
+    try {
+      await apiRequest(`/api/classes/${item.id}`, { method: "DELETE" });
+      if (editingClass?.id === item.id) setEditingClass(null);
+      setSuccess("Clase quitada correctamente.");
+      await onCreated();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo quitar la clase.");
+    } finally {
+      setRemovingClassId("");
     }
   }
 
   return (
     <>
       <PageHeading eyebrow="PLANIFICACIÓN" title="Clases" description="Programa sesiones con fecha y hora para tu escuela." />
+      {error && <div className="alert-error" role="alert">{error}</div>}
+      {success && <div className="form-success class-feedback" role="status">{success}</div>}
       <div className="two-column-layout">
-        <section className="panel form-panel"><div className="panel-heading"><div><span className="eyebrow">NUEVA SESIÓN</span><h2>Programar una clase</h2></div><span className="form-heading-icon">▦</span></div>
-          <form className="stack-form" onSubmit={submit}>
-            <label>Nombre de la clase<input name="title" placeholder="Ej. Salsa nivel inicial" minLength={2} maxLength={120} required /></label>
-            <label>Fecha y hora<input name="scheduledAt" type="datetime-local" min={toLocalDateTimeInput(new Date(Date.now() + 60_000))} required /></label>
-            <label>Notas <span className="optional-label">OPCIONAL</span><textarea name="notes" placeholder="Sala, nivel u otra información útil…" maxLength={500} rows={3} /></label>
-            {error && <div className="form-error" role="alert">{error}</div>}{success && <div className="form-success" role="status">{success}</div>}
-            <button className="button button-primary button-wide" disabled={saving}>{saving ? "Programando…" : "Guardar clase"} <span aria-hidden="true">→</span></button>
+        <section className="panel form-panel"><div className="panel-heading"><div><span className="eyebrow">{editingClass ? "EDITAR SESIÓN" : "NUEVA SESIÓN"}</span><h2>{editingClass ? "Editar clase" : "Programar una clase"}</h2></div><span className="form-heading-icon">▦</span></div>
+          <form className="stack-form" key={editingClass?.id || "new-class"} onSubmit={submit}>
+            <label>Nombre de la clase<input name="title" defaultValue={editingClass?.title || ""} placeholder="Ej. Salsa nivel inicial" minLength={2} maxLength={120} required /></label>
+            <label>Fecha y hora<input name="scheduledAt" type="datetime-local" defaultValue={editingClass ? toLocalDateTimeInput(new Date(editingClass.scheduled_at)) : undefined} min={editingClass ? undefined : toLocalDateTimeInput(new Date(Date.now() + 60_000))} required /></label>
+            <label>Notas <span className="optional-label">OPCIONAL</span><textarea name="notes" defaultValue={editingClass?.notes || ""} placeholder="Sala, nivel u otra información útil…" maxLength={500} rows={3} /></label>
+            <button className="button button-primary button-wide" disabled={saving || removingClassId !== ""}>{saving ? "Guardando…" : editingClass ? "Guardar cambios" : "Guardar clase"} <span aria-hidden="true">→</span></button>
+            {editingClass && <button type="button" className="button button-secondary button-wide" disabled={saving} onClick={() => { setEditingClass(null); setError(""); }}>Cancelar edición</button>}
           </form>
         </section>
         <section className="panel table-panel"><div className="panel-heading"><div><span className="eyebrow">CALENDARIO</span><h2>Todas las clases <span className="heading-count">{classes.length}</span></h2></div></div>
           {classes.length === 0 ? <EmptyState title="Tu agenda está vacía" text="Programa la primera clase para verla aquí." /> : (
             <div className="class-list">{classes.map((item) => {
               const upcoming = new Date(item.scheduled_at).getTime() > Date.now();
-              return <article className="class-row" key={item.id}><div className="date-tile tile-1"><strong>{new Intl.DateTimeFormat("es", { day: "2-digit" }).format(new Date(item.scheduled_at))}</strong><span>{new Intl.DateTimeFormat("es", { month: "short" }).format(new Date(item.scheduled_at)).replace(".", "")}</span></div><div className="class-row-copy"><strong>{item.title}</strong><span>{formatDate(item.scheduled_at)}</span>{item.notes && <small>{item.notes}</small>}<span className={`class-state${upcoming ? "" : " state-past"}`}>{upcoming ? "Próxima" : "Finalizada"} · {item.present_count} presentes</span></div><button className="button button-secondary button-compact" onClick={() => onTakeAttendance(item.id)}>Asistencia</button></article>;
+              return <article className="class-row" key={item.id}><div className="date-tile tile-1"><strong>{new Intl.DateTimeFormat("es", { day: "2-digit" }).format(new Date(item.scheduled_at))}</strong><span>{new Intl.DateTimeFormat("es", { month: "short" }).format(new Date(item.scheduled_at)).replace(".", "")}</span></div><div className="class-row-copy"><strong>{item.title}</strong><span>{formatDate(item.scheduled_at)}</span>{item.notes && <small>{item.notes}</small>}<span className={`class-state${upcoming ? "" : " state-past"}`}>{upcoming ? "Próxima" : "Finalizada"} · {item.present_count} presentes</span></div><div className="class-row-actions"><button className="button button-secondary button-compact" disabled={saving || removingClassId !== ""} onClick={() => { setEditingClass(item); setError(""); setSuccess(""); }}>Editar</button><button className="button button-secondary button-compact" disabled={saving || removingClassId !== ""} onClick={() => onTakeAttendance(item.id)}>Asistencia</button><button className="button button-danger button-compact" disabled={saving || removingClassId !== ""} onClick={() => void removeClass(item)}>{removingClassId === item.id ? "Quitando…" : "Quitar"}</button></div></article>;
             })}</div>
           )}
         </section>

@@ -54,6 +54,7 @@ No subas los valores secretos al repositorio. Usa un `AUTH_SECRET` nuevo y una c
 - Sección administrativa para publicar y quitar enlaces con descripción, visibles en el portal de los alumnos.
 - Los alumnos pueden cancelar su inscripción hasta una hora antes del inicio de la clase.
 - Programación de clases para fecha y hora específicas, con notas opcionales.
+- Los administradores pueden editar o quitar clases; al quitar una clase también se eliminan sus inscripciones y registros de asistencia.
 - Registro de asistencia por clase: pendiente, presente, ausente o tarde; los administradores pueden agregar alumnos a una sesión y quitarlos junto con su marca de esa sesión.
 - Resumen de alumnos, clases y próximas sesiones.
 - Acceso privado para administradores configurados por variables de entorno.
